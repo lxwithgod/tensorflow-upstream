@@ -424,10 +424,8 @@ Status IrEmitter::EmitAtomicOperationForNestedComputation(
     return Status::OK();
   }
 
-  // XXX
-  //return EmitAtomicOperationUsingCAS(computation, output_address,
-  //                                   source_address);
-  return Status::OK();
+  return EmitAtomicOperationUsingCAS(computation, output_address,
+                                     source_address);
 }
 
 Status IrEmitter::HandleSelect(HloInstruction* select) {
