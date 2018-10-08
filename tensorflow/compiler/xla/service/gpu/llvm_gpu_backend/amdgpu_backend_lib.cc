@@ -228,6 +228,22 @@ std::vector<uint8> EmitModuleToHsaco(Module* module, llvm::TargetMachine* target
   std::error_code ec;
   SmallString<128> path;
 
+  // inject IR
+  bool inject_ir = false;
+  std::string inject_ir_path = tensorflow::io::JoinPath(".", ir_filename);
+  if (llvm::sys::fs::exists(inject_ir_path)) {
+    LOG(INFO) << "use inject_ir_path: " << inject_ir_path << "\n";
+    inject_ir = true;
+  }
+
+  // inject ISA
+  bool inject_isa = false;
+  std::string inject_isabin_path = tensorflow::io::JoinPath(".", isabin_filename);
+  if (llvm::sys::fs::exists(inject_isabin_path)) {
+    LOG(INFO) << "use inject_isa_path: " << inject_isabin_path << "\n";
+    inject_isa = true;
+  }
+
   // dump LLVM IR
   std::unique_ptr<llvm::raw_fd_ostream> ir_fs(new llvm::raw_fd_ostream(ir_path, ec, llvm::sys::fs::F_None));
   module->print(*ir_fs, nullptr);
@@ -267,8 +283,15 @@ std::vector<uint8> EmitModuleToHsaco(Module* module, llvm::TargetMachine* target
     llvm_ir::AsStringRef(absl::StrCat("-mcpu=gfx", amdgpu_version)),
     llvm_ir::AsStringRef("-filetype=obj"),
     llvm_ir::AsStringRef("ir_path"),
+    llvm_ir::AsStringRef("-o"),
+    llvm_ir::AsStringRef("isabin_path"),
   };
-  llc_args[5] = llvm_ir::AsStringRef(ir_path.c_str());
+  if (inject_ir) {
+    llc_args[5] = llvm_ir::AsStringRef(inject_ir_path.c_str());
+  } else {
+    llc_args[5] = llvm_ir::AsStringRef(ir_path.c_str());
+  }
+  llc_args[7] = llvm_ir::AsStringRef(isabin_path.c_str());
 
   std::string error_message;
   int llc_result = llvm::sys::ExecuteAndWait(*llc_program,
@@ -300,7 +323,11 @@ std::vector<uint8> EmitModuleToHsaco(Module* module, llvm::TargetMachine* target
     llvm_ir::AsStringRef("-o"),
     llvm_ir::AsStringRef("hsaco_path"),
   };
-  lld_args[4] = llvm_ir::AsStringRef(isabin_path.c_str());
+  if (inject_isa) {
+    lld_args[4] = llvm_ir::AsStringRef(inject_isabin_path.c_str());
+  } else {
+    lld_args[4] = llvm_ir::AsStringRef(isabin_path.c_str());
+  }
   lld_args[6] = llvm_ir::AsStringRef(hsaco_path.c_str());
 
   //std::string error_message;
