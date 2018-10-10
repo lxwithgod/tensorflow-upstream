@@ -317,9 +317,9 @@ CudnnConvolutionAlgorithmPicker::PickBestAlgorithm(
   se::dnn::ProfileResult profile_result;
   VLOG(3) << "Auto-tuning for " << instr->ToString();
 
-  params.algorithm = AlgorithmConfig();
-  bool launch_ok = RunCudnnConvolution(params, &scratch_allocator, &stream,
-                                       &profile_result)
+  bool launch_ok = RunCudnnConvolution(instr, absl::MakeSpan(operand_buffers),
+                                       result_buffer, &scratch_allocator,
+                                       &stream, &profile_result)
                        .ok();
 
   if (launch_ok && profile_result.is_valid()) {
